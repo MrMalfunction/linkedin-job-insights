@@ -255,50 +255,33 @@ async function addMetricsToListings(limit) {
 }
 
 /**
- * Sets up the MutationObserver to process job listings when the page content changes
+ * Main initialization function with retry mechanism
  */
-async function setupJobObserver() {
-  // Get the user-configured limit
+async function init() {
   const limit = await getLimit();
 
-  // Create a mutation observer
-  const observer = new MutationObserver((mutations) => {
-    let shouldProcess = false;
+  // Try to process listings immediately
+  await addMetricsToListings(limit);
 
-    for (const mutation of mutations) {
-      if (
-        mutation.type === "childList" ||
-        (mutation.type === "attributes" && mutation.target.closest(".scaffold-layout__list"))
-      ) {
-        shouldProcess = true;
-        break;
-      }
-    }
-
-    if (shouldProcess) {
-      addMetricsToListings(limit);
-    }
+  // Set up observer for dynamic content changes
+  const observer = new MutationObserver(() => {
+    addMetricsToListings(limit);
   });
 
-  function startObserver() {
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-  }
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
 
-  // Process immediately if DOM is loaded, otherwise wait for DOMContentLoaded
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      addMetricsToListings(limit);
-      startObserver();
-    });
-  } else {
+  // Retry processing every 3 seconds for the first 30 seconds to catch slow-loading content
+  let retries = 0;
+  const retryInterval = setInterval(() => {
     addMetricsToListings(limit);
-    startObserver();
-  }
+    retries++;
+    if (retries >= 10) {
+      clearInterval(retryInterval);
+    }
+  }, 3000);
 }
 
 // Listen for messages from the options page to update the limit on the fly
@@ -318,5 +301,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Initialize
-setupJobObserver();
+// Initialize when DOM is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}

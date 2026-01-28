@@ -58,7 +58,7 @@ async function fetchJobDetails(jobId) {
     return null;
   }
 
-  // First, get views and original listed date
+  // Get original listed date
   const detailsUrl = `https://www.linkedin.com/voyager/api/jobs/jobPostings/${jobId}`;
   try {
     const detailsResponse = await fetch(detailsUrl, {
@@ -81,7 +81,6 @@ async function fetchJobDetails(jobId) {
     // Return combined data
     return {
       applies: applicantCount,
-      views: detailsData.data?.views || 0,
       originalListedAt: detailsData.data?.originalListedAt || null,
     };
   } catch (error) {
@@ -130,7 +129,7 @@ function extractJobIdFromUrl(url) {
  * Updates the metrics element with styling based on the job details
  */
 function updateMetricsElement(element, details, limit) {
-  const { applies, views, originalListedAt } = details;
+  const { applies, originalListedAt } = details;
 
   // Common styles
   const commonStyle =
@@ -147,11 +146,6 @@ function updateMetricsElement(element, details, limit) {
     // Above limit styling
     applicantElement.style.cssText = `${commonStyle} background-color: #ffebeb; color: #cc0000; border: 1px solid #ffcccc;`;
   }
-
-  // Update view count
-  const viewElement = element.querySelector(".view-count");
-  viewElement.textContent = `${views} views`;
-  viewElement.style.cssText = `${commonStyle} background-color: #e8f0fe; color: #1a56db; border: 1px solid #b6d1fc;`;
 
   // Update listing date
   const dateElement = element.querySelector(".listing-date");
@@ -192,7 +186,6 @@ function createMetricsElement() {
   element.style.lineHeight = "1.2";
   element.innerHTML = `
     <div class="applicant-count">Fetching...</div>
-    <div class="view-count">Fetching...</div>
     <div class="listing-date">Checking...</div>
   `;
   return element;
